@@ -51,10 +51,60 @@ update msg model =
 view : Model -> Html Msg
 view model =
   div []
-    [ input [ placeholder "recipe goes here", value model.content, onInput Change ] []
-    , div [] [ text (Debug.toString (run parseStep model.content)) ]
+    [ Html.textarea [ placeholder "recipe goes here", cols 80, rows 10, value model.content, onInput Change ] []
+    , cooklang2html model.content
     ]
 
+
+cooklang2html : String -> Html Msg
+cooklang2html text =
+    div [] [ text |> cooklang2steps |> steps2html ]
+
+cooklang2steps text =
+    text
+    |> String.lines
+    |> List.filter (String.isEmpty >> not)
+    |> List.map (run parseStep)
+    |> List.map (Result.withDefault [])
+
+steps2html steps =
+    steps
+    |> List.map (step2li)
+    |> Html.ol []
+
+step2li step =
+    step
+    |> List.map (steppart2html)
+    |> Html.li []
+
+steppart2html : StepPart -> Html Msg
+steppart2html steppart =
+    case steppart of
+        TextPart text -> Html.text text
+        IngredientPart t q -> ingredient2html t q
+        CookwarePart t q -> cookware2html t q
+        TimerPart t q-> timer2html t q
+
+ingredient2html : String -> Quantity -> Html Msg
+ingredient2html text quant =
+    Html.span
+      [style "background-color" "Pink"]
+      [Html.text text]
+
+cookware2html : String -> Quantity -> Html Msg
+cookware2html text quant =
+    Html.span
+      [style "background-color" "LightBlue"]
+      [Html.text text]
+
+timer2html : String -> Quantity -> Html Msg
+timer2html text quant =
+    Html.span
+      [style "background-color" "LightGreen"]
+      [Html.text <| quantity2text quant]
+
+quantity2text : Quantity -> String
+quantity2text (Quantity amount unit) = amount ++ " " ++ unit
 
 
 -- PARSER
@@ -63,6 +113,8 @@ view model =
 type Quantity = Quantity String String
 
 type StepPart = TextPart String | IngredientPart String Quantity | CookwarePart String Quantity | TimerPart String Quantity
+
+type alias RecipeStep = List(StepPart)
 
 starterGlyph = "@#~"
 starterGlyphOrOpenBracket = "{" ++ starterGlyph
